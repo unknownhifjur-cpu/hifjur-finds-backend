@@ -14,7 +14,7 @@
     "nodemon": "^3.1.14"
   },
   "name": "backend",
-  "type": "commonjs",
+  "type": "module",
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
