@@ -16,7 +16,7 @@ const app = express();
 // CORS configuration for production
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:5173', 'http://localhost:5174']; // Default for development
+  : ['http://localhost:5173', 'http://localhost:5174','https://hifzo-dashboard.vercel.app','https://hifzo.vercel.app']; // Default for development
 
 const corsOptions = {
   origin: function (origin, callback) {
