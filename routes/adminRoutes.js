@@ -4,31 +4,31 @@ import {
   updateProduct,
   deleteProduct,
   getAllOrders,
+  getOrderById,          // <-- import new controller
   updateOrderStatus,
   getAllUsers,
   getDashboardStats,
 } from '../controllers/adminController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
-import { upload } from '../config/cloudinary.js'; // <-- import upload
+import { upload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
-// All admin routes are protected and require admin role
 router.use(protect, admin);
 
-// Dashboard
 router.get('/dashboard', getDashboardStats);
 
 // Products
 router.route('/products')
-  .post(upload.array('images', 5), createProduct); // <-- added upload
+  .post(upload.array('images', 5), createProduct);
 
 router.route('/products/:id')
-  .put(upload.array('images', 5), updateProduct)   // <-- added upload
+  .put(upload.array('images', 5), updateProduct)
   .delete(deleteProduct);
 
 // Orders
 router.get('/orders', getAllOrders);
+router.get('/orders/:id', getOrderById);     // <-- new route
 router.put('/orders/:id', updateOrderStatus);
 
 // Users
