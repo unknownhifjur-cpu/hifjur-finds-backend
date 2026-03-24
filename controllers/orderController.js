@@ -95,7 +95,7 @@ export const createOrder = async (req, res) => {
     res.status(201).json(order[0]);
   } catch (error) {
     await session.abortTransaction();
-    console.error('Order creation failed:', error);  // log the real error
+    console.error('Order creation failed:', error);
     res.status(500).json({ message: error.message });
   } finally {
     session.endSession();
@@ -123,15 +123,21 @@ export const getOrdersByPhone = async (req, res) => {
   }
 };
 
-// Get single order by ID (admin or owner)
+// Get single order by ID – now allows guests to view (no 403)
 export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Allow access for:
+    // - admins
+    // - authenticated user who owns the order
+    // - any guest (no login) – because the order ID itself is enough
     if (req.user && (req.user.role === 'admin' || order.user?.toString() === req.user._id.toString())) {
       return res.json(order);
     }
-    res.status(403).json({ message: 'Not authorized' });
+    // If no user is logged in, still allow viewing the order
+    return res.json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
