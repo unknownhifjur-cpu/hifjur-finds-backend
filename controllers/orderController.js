@@ -4,10 +4,12 @@ import Referral from '../models/Referral.js';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
 
-// Helper to generate orderId (optional, pre-save does it)
-const generateOrderId = () => 'ORD' + Date.now() + Math.floor(Math.random() * 1000);
+// Helper to generate a unique order ID
+const generateOrderId = () => {
+  return 'ORD' + Date.now() + Math.floor(Math.random() * 1000);
+};
 
-// Unified order creation (works for both guest and logged-in users)
+// Unified order creation (guest or logged-in)
 export const createOrder = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -15,20 +17,20 @@ export const createOrder = async (req, res) => {
     let guestName, phoneNumber, shippingAddress;
 
     if (req.user) {
-      // Logged-in user – use user data
+      // Logged-in user: use data from token
       const user = await User.findById(req.user._id);
       guestName = user.name;
       phoneNumber = user.phone || req.body.phoneNumber;
       shippingAddress = req.body.shippingAddress;
     } else {
-      // Guest order
+      // Guest order: get from request body
       ({ guestName, phoneNumber, shippingAddress } = req.body);
     }
 
     const { products, deliveryType, paymentMethod, referralCode } = req.body;
 
-    // Validate city (optional)
-    if (shippingAddress.city !== process.env.ALLOWED_CITY) {
+    // Optional city restriction – skip if not set in .env
+    if (process.env.ALLOWED_CITY && shippingAddress.city !== process.env.ALLOWED_CITY) {
       throw new Error(`Delivery only available in ${process.env.ALLOWED_CITY}`);
     }
 
@@ -41,11 +43,11 @@ export const createOrder = async (req, res) => {
     }
 
     // Calculate totals
-    let subtotal = products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
-    let deliveryCharge = deliveryType === 'HOME' ? 50 : 0;
+    const subtotal = products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+    const deliveryCharge = deliveryType === 'HOME' ? 50 : 0;
     let discountAmount = 0;
 
-    // Apply referral if valid
+    // Apply referral code if valid
     if (referralCode) {
       const referral = await Referral.findOne({ code: referralCode.toUpperCase() }).session(session);
       if (referral && referral.expiresAt > new Date() && !referral.usedByPhone.includes(phoneNumber)) {
@@ -60,7 +62,7 @@ export const createOrder = async (req, res) => {
 
     // Create order
     const order = await Order.create([{
-      orderId: generateOrderId(), // pre-save will also generate, but we set here for consistency
+      orderId: generateOrderId(),               // custom ID
       user: req.user ? req.user._id : null,
       guestName,
       phoneNumber,
@@ -93,6 +95,7 @@ export const createOrder = async (req, res) => {
     res.status(201).json(order[0]);
   } catch (error) {
     await session.abortTransaction();
+    console.error('Order creation failed:', error);  // log the real error
     res.status(500).json({ message: error.message });
   } finally {
     session.endSession();
@@ -148,6 +151,7 @@ export const updateOrderStatus = async (req, res) => {
   }
 };
 
+// Admin: get all orders
 export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });
